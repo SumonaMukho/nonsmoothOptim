@@ -1,14 +1,32 @@
 ###########################################################################
 #
-# Optimization Methods
+# Subgradient Optimisation Methods
 #
-# Matthias C. M. Troffaes
-# 10 Oct 2018
-#
-# Additions : Tathagata Basu
-# 11 Oct 2018
+# Tathagata Basu & Matthias C. M. Troffaes
+# 25 Sept 2019
 #
 ###########################################################################
+
+
+
+#' Subgradient Optimisation
+#' 
+#' Function for minimising piecewise differentiable objective functions.
+#' 
+#' @param theta Initial value.
+#' @param fn Function to optimise.
+#' @param df Subgradient of the objective function.
+#' @param method Method to be used for optimisation. Default is subgradient
+#' method.
+#' @param tol Relative convergence tolerance
+#' @param maxit Maximum number of iterations if relative convergence is not
+#' reached.
+#' @param acl Flag for accelerated methods. Default is false.
+#' @param prox Proximal operator for proximal gradient method. Default is 
+#' NULL.
+#' @param theta_it Iterative theta for coordinate descent algorithm. Default
+#' is NULL.
+
 
 #' Sub-gradient optimization.
 #' 

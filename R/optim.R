@@ -32,7 +32,7 @@
 #' \item{value}{The value of the function corresponding to best set of parameters.}
 #' \item{iteration}{Number of iterations taken}
 #' \item{method}{The method used for the optimisation}
-#' @return 
+#' @export
 
 SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 1000, h = 0.001,
                         prox = NULL, acl = FALSE, theta_it = NULL)

@@ -20,76 +20,100 @@
 #' method.
 #' @param tol Relative convergence tolerance
 #' @param maxit Maximum number of iterations if relative convergence is not
-#' reached.
-#' @param acl Flag for accelerated methods. Default is false.
+#' reached. Default is 1000.
+#' @param h Stepsize for updating the set of parameters. Default is 0.001.
 #' @param prox Proximal operator for proximal gradient method. Default is 
 #' NULL.
+#' @param acl Flag for accelerated proximal gradient method. Default is false.
 #' @param theta_it Iterative theta for coordinate descent algorithm. Default
 #' is NULL.
 #' @return The function returns a list with following components
 #' \item{par}{The best set of parameters}
 #' \item{value}{The value of the function corresponding to best set of parameters.}
-#' \item{convergence}{Convergence message.}
+#' \item{iteration}{Number of iterations taken}
+#' \item{method}{The method used for the optimisation}
 #' @return 
 
-SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 100, acl = NULL,
-                        prox = NULL, theta_it = NULL){
+SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 1000, h = 0.001,
+                        prox = NULL, acl = FALSE, theta_it = NULL)
+{
+  if(length(theta) != length(df(theta)))
+    stop("Number of parameters does not match with length of the sub gradient vector")
   
+  if(is.null(prox) & any(method == c("PG", "pg"))){
+    warning("No proximal operator provided, the method defaults to sub gradient method")
+    method = "SG"
+  }
+    
+  if(is.null(theta_it) && any(method == c("CD", "cd"))){
+    warning("No iterative theta provided, the method defaults to sub gradient method")
+    method = "SG"
+  }
   
   # Sub-gradient optimisation.
-  sg = function(theta, fn, df, ts) {
-    fx = fn(theta)
-    par = theta
-    value = fx
-    for (t in ts) {
-      theta = theta - t * df(x)
-      fx = f(theta)
+  sg = function(theta, fn, df, tol, maxit, h) {
+    value = fn(theta)
+    par = theta.last = theta
+    t = c(rep(h, maxit %/% 2), h / (1:(maxit - maxit %/% 2)))
+    for (i in 1:maxit) {
+      theta = theta.last - t[i] * df(theta.last)
+      fx = fn(theta)
       if(fx < value) {
         par = theta
         value = fx
       }
+      if(sqrt(sum((df(theta) ^ 2))) < tol)
+        break()
+      else
+        theta.last = theta
     }
-    par
+    
+    output = list("par" = par, "value" = value, "iteration" = i, "method" = "sub gradient")
+    output
   }
   
   # Proximal gradient optimisation.
   
-  pg = function(theta, fn, df, prox, ts) {
-    for (t in ts) par = prox(t, theta - t * df(x))
-    par
+  pg = function(theta, fn, df, prox, acc, tol, maxit, h) {
+    par = theta
+    t = c(rep(h, maxit %/% 2), h / (1:(maxit - maxit %/% 2)))
+    for (i in 1:maxit) {
+      par = prox(t[i], theta - t[i] * df(theta))
+      theta = par
+      if(sqrt(sum((df(par) ^ 2))) < tol)
+        break()
+    }
+    value = fn(par)
+    
+    output = list("par" = par, "value" = value, "iteration" = i, "method" = "proximal gradient")
+    output
   }
   
   # Co-ordinate descent optimisation.
   
-  cd = function(theta, fn, theta_it, maxit = 100) {
+  cd = function(theta, fn, theta_it, tol, maxit) {
     for (j in 1:maxit) {
       theta.last = theta
       for(i in 1:length(theta)) {
         theta[i] = theta_it(theta, i)
       }
-      if(sum(abs(theta.last - theta)) < 0.00001)
+      if(sqrt(sum(((theta.last - theta) ^ 2))) < tol)
         break
     }
-    theta[abs(theta) < 0.00001] = 0
-    theta
+    value = fn(theta)
+    
+    output = list("par" = theta, "value" = value, "iteration" = j, "method" = "coordinate descent")
+    output
   }
+  
+  if(any(method == c("SG", "sg"))) 
+    output = sg(theta = theta, fn = fn, df = df, tol = tol, maxit = maxit, h = h)
+  if(any(method == c("PG", "pg")))
+    output = pg(theta = theta, fn = fn, df = df, prox = prox, acc = acc, 
+                tol = tol, maxit = maxit, h = h)
+  if(any(method == c("CD", "cd")))
+    output = cd(theta = theta, fn = fn, theta_it = theta_it, tol = tol, maxit = maxit)
+  
+  
+  output
 }
-
-
-
-
-#' Sequence of step sizes for optimization.
-#' 
-#' Function to generate stepsize for sub-gradient optimization and proximal-gradient optimization
-#' @param t Starting value.
-#' @param m Number of constant steps.
-#' @param n Number of diminishing steps.
-#' @return The sequence of stepsize
-#' @export
-
-opt_ts = function(t, m, n)
-  if (n != 0) {
-    c(rep(t, m), t / (1:n))
-  } else {
-    rep(t, m)
-  }

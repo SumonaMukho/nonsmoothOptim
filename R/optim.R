@@ -1,6 +1,6 @@
 ###########################################################################
 #
-# Subgradient Optimisation Methods
+# Optimisation methods for non smooth functions
 #
 # Tathagata Basu & Matthias C. M. Troffaes
 # 25 Sept 2019
@@ -9,7 +9,7 @@
 
 
 
-#' Subgradient Optimisation
+#' Optimisation tool for non smooth functions
 #' 
 #' Function for minimising piecewise differentiable objective functions.
 #' 
@@ -34,7 +34,7 @@
 #' \item{method}{The method used for the optimisation}
 #' @export
 
-SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 1000, h = 0.001,
+nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000, h = 0.001,
                         prox = NULL, acl = FALSE, theta_it = NULL)
 {
   if(length(theta) != length(df(theta)))
@@ -74,18 +74,32 @@ SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 1000, h = 0.0
   
   # Proximal gradient optimisation.
   
-  pg = function(theta, fn, df, prox, acc, tol, maxit, h) {
-    par = theta
+  pg = function(theta, fn, df, prox, acl, tol, maxit, h) {
+    par = theta.prev = theta
     t = c(rep(h, maxit %/% 2), h / (1:(maxit - maxit %/% 2)))
-    for (i in 1:maxit) {
-      par = prox(t[i], theta - t[i] * df(theta))
-      theta = par
-      if(sqrt(sum((df(par) ^ 2))) < tol)
-        break()
+    if(isTRUE(acl)){
+      for (i in 1:maxit) {
+        v = theta + (i - 2) * (theta - theta.prev) / (i + 1)
+        par = prox(t[i], v - t[i] * df(v))
+        theta.prev = theta
+        theta = par
+        if(sqrt(sum((df(par) ^ 2))) < tol)
+          break()
+      }
+      throw = "accelerated proximal gradient"
+    }
+    else{
+      for (i in 1:maxit) {
+        par = prox(t[i], theta - t[i] * df(theta))
+        theta = par
+        if(sqrt(sum((df(par) ^ 2))) < tol)
+          break()
+      }
+      throw = "proximal gradient"
     }
     value = fn(par)
     
-    output = list("par" = par, "value" = value, "iteration" = i, "method" = "proximal gradient")
+    output = list("par" = par, "value" = value, "iteration" = i, "method" = throw)
     output
   }
   
@@ -109,7 +123,7 @@ SubgradOptim = function(theta, fn, df, method, tol = 1e-5, maxit = 1000, h = 0.0
   if(any(method == c("SG", "sg"))) 
     output = sg(theta = theta, fn = fn, df = df, tol = tol, maxit = maxit, h = h)
   if(any(method == c("PG", "pg")))
-    output = pg(theta = theta, fn = fn, df = df, prox = prox, acc = acc, 
+    output = pg(theta = theta, fn = fn, df = df, prox = prox, acl = acl, 
                 tol = tol, maxit = maxit, h = h)
   if(any(method == c("CD", "cd")))
     output = cd(theta = theta, fn = fn, theta_it = theta_it, tol = tol, maxit = maxit)

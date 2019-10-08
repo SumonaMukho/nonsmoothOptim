@@ -1,9 +1,10 @@
 Package: nonsmoothOptim
-Title: What the Package Does (one line, title case)
-Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Title: Optimisation with piece-wise differentiable functions.
+Version: 1.0.0.0000
+Authors@R: c(person("Tathagata", "Basu", email = "tathagata.basu@durham.ac.uk", role = c("aut", "cre")), person("Matthias", "Troffaes", email = "matthias.troffaes@durham.ac.uk", role = "aut"))
+Description: This package concerns with optimisation for piece-wise differentiable functions. Here, three seperate methods can be found with one of them having an accelarated variant. The three methods are subgradient method, proximal gradient method and coordinate descent algorithm. The proximal gradient method has an accelarated varient which can be found as a flag in the input parameters. 
 Depends: R (>= 3.6.1)
-License: What license is it under?
+License: GPL 3
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 6.1.1

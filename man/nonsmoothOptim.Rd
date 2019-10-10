@@ -25,7 +25,7 @@ reached. Default is 1000.}
 
 \item{h}{Stepsize for updating the set of parameters. Default is 0.001.}
 
-\item{prox}{Proximal operator for proximal gradient method. Default is 
+\item{prox}{Proximal operator for proximal gradient method. Default is
 NULL.}
 
 \item{acl}{Flag for accelerated proximal gradient method. Default is false.}

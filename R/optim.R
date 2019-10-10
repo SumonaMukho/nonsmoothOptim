@@ -10,9 +10,9 @@
 
 
 #' Optimisation tool for non smooth functions
-#' 
+#'
 #' Function for minimising piecewise differentiable objective functions.
-#' 
+#'
 #' @param theta Initial value.
 #' @param fn Function to optimise.
 #' @param df Subgradient of the objective function.
@@ -22,7 +22,7 @@
 #' @param maxit Maximum number of iterations if relative convergence is not
 #' reached. Default is 1000.
 #' @param h Stepsize for updating the set of parameters. Default is 0.001.
-#' @param prox Proximal operator for proximal gradient method. Default is 
+#' @param prox Proximal operator for proximal gradient method. Default is
 #' NULL.
 #' @param acl Flag for accelerated proximal gradient method. Default is false.
 #' @param theta_it Iterative theta for coordinate descent algorithm. Default
@@ -39,17 +39,22 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
 {
   if(length(theta) != length(df(theta)))
     stop("Number of parameters does not match with length of the sub gradient vector")
-  
+
   if(is.null(prox) & any(method == c("PG", "pg"))){
     warning("No proximal operator provided, the method defaults to sub gradient method")
     method = "SG"
   }
-    
+
   if(is.null(theta_it) && any(method == c("CD", "cd"))){
     warning("No iterative theta provided, the method defaults to sub gradient method")
     method = "SG"
   }
-  
+
+  if(!any(method == c("SG", "sg", "PG", "pg", "CD", "cd"))){
+    warning("Wrong input for method, the method defaults to sub gradient method")
+    method = "SG"
+  }
+
   # Sub-gradient optimisation.
   sg = function(theta, fn, df, tol, maxit, h) {
     value = fn(theta)
@@ -57,6 +62,8 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
     t = c(rep(h, maxit %/% 2), h / (1:(maxit - maxit %/% 2)))
     for (i in 1:maxit) {
       theta = theta.last - t[i] * df(theta.last)
+      if(is.na(sum((df(theta) ^ 2))))
+        stop("the subgradient vector is returning undefined value, change stepsize")
       fx = fn(theta)
       if(fx < value) {
         par = theta
@@ -67,13 +74,13 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
       else
         theta.last = theta
     }
-    
-    output = list("par" = par, "value" = value, "iteration" = i, "method" = "sub gradient")
+
+    output = list("par" = as.vector(par), "value" = value, "iteration" = i, "method" = "sub gradient")
     output
   }
-  
+
   # Proximal gradient optimisation.
-  
+
   pg = function(theta, fn, df, prox, acl, tol, maxit, h) {
     par = theta.prev = theta
     t = c(rep(h, maxit %/% 2), h / (1:(maxit - maxit %/% 2)))
@@ -83,7 +90,9 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
         par = prox(t[i], v - t[i] * df(v))
         theta.prev = theta
         theta = par
-        if(sqrt(sum((df(par) ^ 2))) < tol)
+        if(is.na(sqrt(sum((df(theta) ^ 2)))))
+          stop("the subgradient vector is returning undefined value, change stepsize")
+        if(sqrt(sum((df(theta) ^ 2))) < tol)
           break()
       }
       throw = "accelerated proximal gradient"
@@ -92,19 +101,21 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
       for (i in 1:maxit) {
         par = prox(t[i], theta - t[i] * df(theta))
         theta = par
-        if(sqrt(sum((df(par) ^ 2))) < tol)
+        if(is.na(sqrt(sum((df(theta) ^ 2)))))
+          stop("the subgradient vector is returning undefined value, change stepsize")
+        if(sqrt(sum((df(theta) ^ 2))) < tol)
           break()
       }
       throw = "proximal gradient"
     }
     value = fn(par)
-    
-    output = list("par" = par, "value" = value, "iteration" = i, "method" = throw)
+
+    output = list("par" = as.vector(par), "value" = value, "iteration" = i, "method" = throw)
     output
   }
-  
+
   # Co-ordinate descent optimisation.
-  
+
   cd = function(theta, fn, theta_it, tol, maxit) {
     for (j in 1:maxit) {
       theta.last = theta
@@ -115,19 +126,19 @@ nonsmoothOptim = function(theta, fn, df, method = "SG", tol = 1e-5, maxit = 1000
         break
     }
     value = fn(theta)
-    
+
     output = list("par" = theta, "value" = value, "iteration" = j, "method" = "coordinate descent")
     output
   }
-  
-  if(any(method == c("SG", "sg"))) 
+
+  if(any(method == c("SG", "sg")))
     output = sg(theta = theta, fn = fn, df = df, tol = tol, maxit = maxit, h = h)
   if(any(method == c("PG", "pg")))
-    output = pg(theta = theta, fn = fn, df = df, prox = prox, acl = acl, 
+    output = pg(theta = theta, fn = fn, df = df, prox = prox, acl = acl,
                 tol = tol, maxit = maxit, h = h)
   if(any(method == c("CD", "cd")))
     output = cd(theta = theta, fn = fn, theta_it = theta_it, tol = tol, maxit = maxit)
-  
-  
+
+
   output
 }
